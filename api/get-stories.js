@@ -6,25 +6,41 @@ export default async function handler(req, res) {
 
   try {
     const storiesResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/stories?customer_email=eq.${email}`,
+      `${SUPABASE_URL}/rest/v1/stories?customer_email=eq.${encodeURIComponent(email)}`,
       {
         headers: {
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json"
         }
       }
     );
 
     const stories = await storiesResponse.json();
 
+    if (!storiesResponse.ok) {
+      return res.status(500).json({
+        error: "Supabase stories request failed",
+        details: stories
+      });
+    }
+
+    if (!Array.isArray(stories)) {
+      return res.status(500).json({
+        error: "Stories response was not an array",
+        details: stories
+      });
+    }
+
     const results = await Promise.all(
       stories.map(async (story) => {
         const pageResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/story_pages?story_id=eq.${story.story_id}&order=page_number.asc&limit=1`,
+          `${SUPABASE_URL}/rest/v1/story_pages?story_id=eq.${encodeURIComponent(story.story_id)}&order=page_number.asc&limit=1`,
           {
             headers: {
               apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "application/json"
             }
           }
         );
@@ -34,27 +50,16 @@ export default async function handler(req, res) {
         return {
           story_id: story.story_id,
           story_title: story.story_title,
-          cover_image: pages[0]?.image_url || ""
+          cover_image: Array.isArray(pages) && pages[0] ? pages[0].image_url : ""
         };
       })
     );
 
-    res.status(200).json(results);
+    return res.status(200).json(results);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch stories" });
-  }
-}
-
-        return {
-          story_id: story.story_id,
-          story_title: story.story_title,
-          cover_image: pages[0]?.image_url || ""
-        };
-      })
-    );
-
-    res.status(200).json(results);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch stories" });
+    return res.status(500).json({
+      error: "Function crashed",
+      message: error.message
+    });
   }
 }

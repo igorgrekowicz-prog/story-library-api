@@ -1,4 +1,13 @@
 export default async function handler(req, res) {
+  // CORS so Shopify can call this API
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   const email = "mystoryfriend@outlook.com";
 
   const SUPABASE_URL = "https://bqkxhjwpkbtsebaunile.supabase.co";
@@ -21,13 +30,6 @@ export default async function handler(req, res) {
     if (!storiesResponse.ok) {
       return res.status(500).json({
         error: "Supabase stories request failed",
-        details: stories
-      });
-    }
-
-    if (!Array.isArray(stories)) {
-      return res.status(500).json({
-        error: "Stories response was not an array",
         details: stories
       });
     }
@@ -55,7 +57,11 @@ export default async function handler(req, res) {
       })
     );
 
-    return res.status(200).json(results);
+    return res.status(200).json({
+      cors_test: "working",
+      stories: results
+    });
+
   } catch (error) {
     return res.status(500).json({
       error: "Function crashed",
